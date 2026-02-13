@@ -45,8 +45,8 @@ A comprehensive Cloud Access Security Broker solution for monitoring and securin
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd "Set up cloud access security broker for SaaS monitoring"
+git clone https://github.com/astafofo/cloud-access-security-broker-for-SaaS-monitoring.git
+cd "cloud access security broker for SaaS monitoring"
 ```
 
 2. Copy environment configuration:
