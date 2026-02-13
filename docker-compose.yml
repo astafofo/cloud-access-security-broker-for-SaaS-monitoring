@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  casb-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://casb_user:password@postgres:5432/casb_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./:/app
+    networks:
+      - casb-network
+
+  casb-worker:
+    build: .
+    command: celery -A app.core.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://casb_user:password@postgres:5432/casb_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./:/app
+    networks:
+      - casb-network
+
+  casb-dashboard:
+    build: .
+    command: python -m app.dashboard.main
+    ports:
+      - "8050:8050"
+    environment:
+      - DATABASE_URL=postgresql://casb_user:password@postgres:5432/casb_db
+    depends_on:
+      - postgres
+      - casb-api
+    networks:
+      - casb-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=casb_db
+      - POSTGRES_USER=casb_user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - casb-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - casb-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - casb-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - casb-network
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  casb-network:
+    driver: bridge

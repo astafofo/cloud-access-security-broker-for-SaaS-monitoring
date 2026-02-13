@@ -1,0 +1,228 @@
+# Default Security Policies Configuration
+# This file contains predefined security policies for the CASB system
+
+policies:
+  # Data Transfer Policies
+  - name: "Block Large File Downloads"
+    description: "Block downloads of files larger than 100MB"
+    type: "data_transfer"
+    conditions:
+      action: ["download", "export"]
+      file_size:
+        max_mb: 100
+    actions:
+      - type: "block"
+        message: "File download blocked: File size exceeds 100MB limit"
+      - type: "alert"
+        severity: "high"
+    priority: 8
+    status: "active"
+
+  - name: "Restrict External Sharing"
+    description: "Alert on external sharing of sensitive documents"
+    type: "data_transfer"
+    conditions:
+      action: ["share", "external_share"]
+      resource_contains: ["confidential", "restricted", "internal"]
+    actions:
+      - type: "alert"
+        severity: "critical"
+      - type: "quarantine"
+    priority: 9
+    status: "active"
+
+  # Authentication Policies
+  - name: "Suspicious Login Detection"
+    description: "Detect and alert on suspicious login patterns"
+    type: "authentication"
+    conditions:
+      action: "login"
+      suspicious_indicators:
+        - "new_ip_address"
+        - "unusual_time"
+        - "new_device"
+        - "new_location"
+    actions:
+      - type: "alert"
+        severity: "medium"
+      - type: "require_mfa"
+    priority: 7
+    status: "active"
+
+  - name: "Brute Force Protection"
+    description: "Detect and block potential brute force attacks"
+    type: "authentication"
+    conditions:
+      action: "login"
+      failed_attempts:
+        count: 5
+        time_window_minutes: 15
+    actions:
+      - type: "block"
+        duration_minutes: 30
+      - type: "alert"
+        severity: "high"
+    priority: 8
+    status: "active"
+
+  # Access Control Policies
+  - name: "Privileged Access Monitoring"
+    description: "Monitor and alert on privileged account activities"
+    type: "access_control"
+    conditions:
+      user_role: ["admin", "administrator", "superuser"]
+      action: ["delete", "modify", "export", "download"]
+    actions:
+      - type: "alert"
+        severity: "high"
+      - type: "log"
+        level: "detailed"
+    priority: 9
+    status: "active"
+
+  - name: "Off-Hours Access Restriction"
+    description: "Alert on access during unusual hours"
+    type: "access_control"
+    conditions:
+      time_range:
+        start: 22  # 10 PM
+        end: 6     # 6 AM
+      action: ["download", "export", "delete"]
+    actions:
+      - type: "alert"
+        severity: "medium"
+      - type: "require_approval"
+    priority: 6
+    status: "active"
+
+  # Compliance Policies
+  - name: "PII Data Protection"
+    description: "Detect and block potential PII data exfiltration"
+    type: "compliance"
+    conditions:
+      sensitive_patterns:
+        - "ssn"
+        - "credit_card"
+        - "bank_account"
+        - "passport"
+      action: ["download", "export", "email"]
+    actions:
+      - type: "block"
+        message: "Access blocked: Potential PII data detected"
+      - type: "alert"
+        severity: "critical"
+      - type: "quarantine"
+    priority: 10
+    status: "active"
+
+  - name: "GDPR Compliance Monitoring"
+    description: "Monitor activities that may impact GDPR compliance"
+    type: "compliance"
+    conditions:
+      data_subject_access: true
+      cross_border_transfer: true
+      retention_policy_violation: true
+    actions:
+      - type: "alert"
+        severity: "high"
+      - type: "log"
+        level: "compliance"
+      - type: "notify_dpo"
+    priority: 8
+    status: "active"
+
+  # Application-Specific Policies
+  - name: "Microsoft 365 OneDrive Monitoring"
+    description: "Monitor OneDrive for sensitive data access"
+    type: "application_specific"
+    application: "microsoft_365"
+    conditions:
+      service: "onedrive"
+      action: ["download", "share", "delete"]
+      file_classification: ["confidential", "restricted"]
+    actions:
+      - type: "alert"
+        severity: "medium"
+      - type: "require_justification"
+    priority: 7
+    status: "active"
+
+  - name: "Google Workspace Drive Monitoring"
+    description: "Monitor Google Drive for suspicious activities"
+    type: "application_specific"
+    application: "google_workspace"
+    conditions:
+      service: "drive"
+      action: ["download", "share", "export"]
+      external_sharing: true
+    actions:
+      - type: "alert"
+        severity: "medium"
+      - type: "log"
+        level: "detailed"
+    priority: 7
+    status: "active"
+
+  - name: "Salesforce Data Export Monitoring"
+    description: "Monitor Salesforce data export activities"
+    type: "application_specific"
+    application: "salesforce"
+    conditions:
+      action: ["export", "report_export", "data_export"]
+      record_count:
+        min: 1000
+    actions:
+      - type: "alert"
+        severity: "high"
+      - type: "require_approval"
+    priority: 8
+    status: "active"
+
+# Policy Templates
+templates:
+  data_loss_prevention:
+    description: "Template for data loss prevention policies"
+    default_actions:
+      - type: "alert"
+        severity: "medium"
+      - type: "log"
+        level: "standard"
+
+  access_monitoring:
+    description: "Template for access monitoring policies"
+    default_actions:
+      - type: "alert"
+        severity: "low"
+      - type: "log"
+        level: "standard"
+
+  compliance_monitoring:
+    description: "Template for compliance monitoring policies"
+    default_actions:
+      - type: "alert"
+        severity: "high"
+      - type: "log"
+        level: "compliance"
+      - type: "notify_compliance_team"
+
+# Policy Enforcement Levels
+enforcement_levels:
+  monitor_only:
+    description: "Only monitor and log activities"
+    actions: ["log"]
+  
+  alert_only:
+    description: "Send alerts but don't block"
+    actions: ["alert", "log"]
+  
+  soft_block:
+    description: "Block with user override option"
+    actions: ["alert", "block_soft", "log"]
+  
+  hard_block:
+    description: "Block without override option"
+    actions: ["alert", "block", "log"]
+  
+  quarantine:
+    description: "Quarantine the resource/user"
+    actions: ["alert", "quarantine", "log"]
